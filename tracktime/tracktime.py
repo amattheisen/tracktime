@@ -13,6 +13,7 @@ Author: Andrew Mattheisen
             Lists the Activities for the day (default), or weekly summary
 
 """
+from __future__ import print_function
 import datetime
 import argparse
 from sys import argv
@@ -50,7 +51,7 @@ class Activity():
     def writedb(self):
         """ write activity to database """
         fdout = open("timelog.txt", "a")
-        print >> fdout, self.__str__()
+        print(self.__str__(), file=fdout)
         fdout.close()
 
     def get_duration(self, now):
@@ -102,12 +103,12 @@ def stop(now):
         activity_text = activity.__str__()
         for line in fileinput.input("timelog.txt", inplace=1):
             if line.strip() != activity_text:
-                print line.strip()
+                print(line.strip())
                 continue
             # stop activity
             log_activity = parse_line(line)
             log_activity.endtime = now.strftime(DATETIMEFORMAT)
-            print log_activity.__str__()
+            print(log_activity.__str__())
             break  # assumes only 1 activity in progress
         fileinput.close()
         break
@@ -117,11 +118,11 @@ def stop(now):
 def list_day(day, now):
     """ print daily activity list """
     activities = get_rows(now, day)
-    print ACTIVITY_DAY_HEADER.format(
-      weekday=day.strftime("%A,"), day=day.strftime(DAYFORMAT))
+    print(ACTIVITY_DAY_HEADER.format(
+      weekday=day.strftime("%A,"), day=day.strftime(DAYFORMAT)))
     for activity in activities:
         activity_text = activity.day_format(now)
-        print activity_text
+        print(activity_text)
     return
 
 
@@ -134,7 +135,7 @@ def list_week(now):
         if this_day > now:
             break
         list_day(this_day, now)
-        print ""
+        print("")
     return
 
 
@@ -229,11 +230,11 @@ def read_args(argv=None):
     if args.command == "start":
         (activity, category) = parse_activity_at_category(p, args)
         stop(now)
-        print "STARTING", "TASK: ", activity, "TAG: ", category
+        print("STARTING", "TASK: ", activity, "TAG: ", category)
         start(now, activity, category)
     elif args.command == "stop":
         if len(args.detail) == 0:
-            print "STOPPING CURRENT TASK"
+            print("STOPPING CURRENT TASK")
             stop(now)
         else:
             p.error("ERROR: bad option for %s command" % args.command)
