@@ -10,4 +10,4 @@ Easily track time spent on various activities.
 
 ## Requirements
 
-1. Python 2.7
+1. Python 2.7 or 3.x
