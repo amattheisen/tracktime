@@ -1,16 +1,8 @@
+#!/usr/bin/env python
 """Time Track
 Description: Track time spent at various activities
 
 Author: Andrew Mattheisen
-
-                        ^^^^ ^^^^
-                          |    \-----Category
-                          \----------Activity
-            Begins a new activity, stopping in progress activity
-        timetracker stop
-            Stops in progress activity
-        timetracker list [week]
-            Lists the Activities for the day (default), or weekly summary
 
 """
 from __future__ import print_function
@@ -18,8 +10,11 @@ import datetime
 import argparse
 from sys import argv
 import fileinput
+from os.path import expanduser
+from os.path import join as ospathjoin
 
 VERSION = "0.0"
+TIMELOG=ospathjoin(expanduser("~"), "timelog.txt")
 DATETIMEFORMAT = "%Y-%m-%dT%H:%M:%S"
 DAYFORMAT = "%Y-%m-%d"
 INPROGRESS = "none"
@@ -50,7 +45,7 @@ class Activity():
 
     def writedb(self):
         """ write activity to database """
-        fdout = open("timelog.txt", "a")
+        fdout = open(TIMELOG, "a")
         print(self.__str__(), file=fdout)
         fdout.close()
 
@@ -101,7 +96,7 @@ def stop(now):
             continue
         # Activity is in progress
         activity_text = activity.__str__()
-        for line in fileinput.input("timelog.txt", inplace=1):
+        for line in fileinput.input(TIMELOG, inplace=1):
             if line.strip() != activity_text:
                 print(line.strip())
                 continue
@@ -160,7 +155,7 @@ def parse_line(line):
 def get_rows(now, this_day):
     """ get rows from database """
     try:
-        fdin = open("timelog.txt", "r")
+        fdin = open(TIMELOG, "r")
     except:
         # file does not exist, nothing to list
         return []
