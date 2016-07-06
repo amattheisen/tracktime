@@ -14,7 +14,7 @@ from os.path import expanduser
 from os.path import join as ospathjoin
 
 VERSION = "0.0"
-TIMELOG=ospathjoin(expanduser("~"), "timelog.txt")
+TIMELOG = ospathjoin(expanduser("~"), "timelog.txt")
 DATETIMEFORMAT = "%Y-%m-%dT%H:%M:%S"
 DAYFORMAT = "%Y-%m-%d"
 INPROGRESS = "none"
