@@ -1,113 +1,402 @@
+from __future__ import print_function
+import pytest
+from os.path import join as ospathjoin
+import os
 from tracktime import tracktime
 import datetime
 
-
-# MODEL
-def test__create_activity__succeeds():
-    time1 = datetime.datetime(2016, 6, 8, 6, 0)
-    time2 = datetime.datetime(2016, 6, 8, 7, 30)
-    time3 = datetime.datetime(2016, 6, 8, 7, 40)
-    name1 = "write code"
-    name2 = "check email"
-    name3 = "test code"
-    category1 = "programming"
-    category2 = "admin"
-
-    activity1 = tracktime.Activity(time1, name1, category1, time2)
-    assert activity1.starttime == time1
-    assert activity1.name == name1
-    assert activity1.category == category1
-    assert activity1.endtime == time2
-
-    activity2 = tracktime.Activity(time2, name2, category2, time3)
-    assert activity2.starttime == time2
-    assert activity2.name == name2
-    assert activity2.category == category2
-    assert activity2.endtime == time3
-
-    activity3 = tracktime.Activity(time3, name3)
-    assert activity3.starttime == time3
-    assert activity3.name == name3
-    assert activity3.category == tracktime.DEFAULT_CATEGORY
-    assert activity3.endtime == tracktime.INPROGRESS
+TEST_TIMELOG = ospathjoin("tests", "test_timelog.txt")
 
 
-def test__create_finished_activity__succeeds():
-    # activity = tracktime.Activity(
-    #   starttime, name, category, endtime=False)
-    assert True
+def erase_test_timelog():
+    """ remove the TEST_TIMELOG (if it exists) """
+    try:
+        os.remove(TEST_TIMELOG)
+    except OSError:
+        pass
+    return
 
 
-def test__activity_str_format__succeeds():
-    assert True
+def add_test_timelog_entries_directly():
+    timelog = TEST_TIMELOG
+
+    """ Create a finished activity """
+    name = "admin"
+    category = "work"
+    time1 = datetime.datetime(2016, 6, 9, 6, 5, 35)
+    time2 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    activity = tracktime.Activity(time1, name, category, time2)
+    activity.writedb(timelog)
+
+    """ Create a finished activity """
+    name = "lunch"
+    category = "break"
+    time1 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    time2 = datetime.datetime(2016, 6, 9, 11, 47, 17)
+    activity = tracktime.Activity(time1, name, category, time2)
+    activity.writedb(timelog)
+
+    """ Create an unfinished activity at the end of a day """
+    name = "work"
+    category = "work"
+    time1 = datetime.datetime(2016, 6, 9, 11, 47, 17)
+    activity = tracktime.Activity(time1, name, category)
+    activity.writedb(timelog)
+
+    """ Create an unfinished activity with default category """
+    name = "travel"
+    time1 = datetime.datetime(2016, 6, 11, 1, 0, 41)
+    activity = tracktime.Activity(time1, name)
+    activity.writedb(timelog)
+    return
 
 
-def test__activity_writedb__succeeds():
-    assert True
+def add_test_timelog_comment():
+    timelog = TEST_TIMELOG
+    with open(timelog, 'a') as fd:
+        print("# Random Comment\n", file=fd)
+    return
 
 
-def test__activity_get_duration__succeeds():
-    assert True
+def populate_test_timelog():
+    """ Prepare the test timelog for a test """
+    erase_test_timelog()
+    add_test_timelog_entries_directly()
+    add_test_timelog_comment()
+    return
 
 
-def test__activity_day_format__succeeds():
-    assert True
+# ====================== TESTS ============================
+def test__make_parser__succeeds():
+
+    """ activity and category """
+    argv = ["start", "Work@Office"]
+    p = tracktime.make_parser()
+    args = p.parse_args(argv)
+    assert args.command == "start"
+    assert args.detail == ["Work@Office"]
+
+    """ activity with a category both with spaces """
+    argv = ["start", "Learn", "Latin@Tiny", "Office"]
+    p = tracktime.make_parser()
+    args = p.parse_args(argv)
+    assert args.command == "start"
+    assert args.detail == ["Learn", "Latin@Tiny", "Office"]
+
+    """ list with week """
+    argv = ["list", "week"]
+    p = tracktime.make_parser()
+    args = p.parse_args(argv)
+    assert args.command == "list"
+    assert args.detail == ["week"]
+
+    """ stop command """
+    argv = ["stop"]
+    p = tracktime.make_parser()
+    args = p.parse_args(argv)
+    assert args.command == "stop"
+    assert args.detail == []
 
 
-# UTILITIES
-def test__parse_line__succeeds():
-    assert True
+def test__parse_activity_at_category():
+    """ Test activity@category parsing"""
+    class Object(object):
+        pass
+
+    p = tracktime.make_parser()
+    args = Object()
+
+    """ Default category """
+    args.detail = ["Work"]
+    activity, category = tracktime.parse_activity_at_category(p, args)
+    assert activity == "Work"
+    assert category == tracktime.DEFAULT_CATEGORY
+
+    """ Default category with @ sign in activity name """
+    args.detail = ["Work@"]
+    activity, category = tracktime.parse_activity_at_category(p, args)
+    assert activity == "Work"
+    assert category == tracktime.DEFAULT_CATEGORY
+
+    """ Simple activity and category """
+    args.detail = ["Work@Office"]
+    activity, category = tracktime.parse_activity_at_category(p, args)
+    assert activity == "Work"
+    assert category == "Office"
+
+    """ Spaces in activity and category """
+    args.detail = ["Learn", "Latin@Tiny", "Office"]
+    activity, category = tracktime.parse_activity_at_category(p, args)
+    assert activity == "Learn Latin"
+    assert category == "Tiny Office"
+
+    """ Spaces in activity and category and around @ sign """
+    args.detail = ["email", "person@school.edu", "@", "Home", "Office"]
+    activity, category = tracktime.parse_activity_at_category(p, args)
+    assert activity == "email person@school.edu"
+    assert category == "Home Office"
+
+    """ @ in activity name """
+    args.detail = ["email", "person@school.edu", "@", "Home", "Office"]
+    activity, category = tracktime.parse_activity_at_category(p, args)
+    assert activity == "email person@school.edu"
+    assert category == "Home Office"
+
+    """ No activity provided """
+    args.detail = []
+    pytest.raises(
+      SystemExit,
+      tracktime.parse_activity_at_category, p, args)
+
+
+def test__create_Activity__succeeds(capsys):
+    """ Create and test one completed activity and test:
+          Activity.__init__()
+                  .__str__()
+                  .get_duration()
+                  .day_format()
+    """
+    name = "admin"
+    category = "work"
+    time1 = datetime.datetime(2016, 6, 9, 6, 5, 35)
+    time2 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    now = datetime.datetime(2016, 6, 9, 18)
+    duration = time2 - time1
+    day_format = " 06:05 - 11:23  (5h 17min) | admin@work"
+    activity__str__ = "\n".join([
+      "STARTTIME=2016-06-09T06:05:35; NAME=admin; CATEGORY=work; "
+      "ENDTIME=2016-06-09T11:23:02",
+      ""])
+
+    activity = tracktime.Activity(time1, name, category, time2)
+    assert activity.starttime == time1
+    assert activity.name == name
+    assert activity.category == category
+    assert activity.endtime == time2
+    assert activity.get_duration(now) == duration
+    assert activity.day_format(now) == day_format
+    print(activity)
+    out, err = capsys.readouterr()
+    assert out == activity__str__
+
+
+def test_write_and_read_Activity__succeeds(capsys):
+    erase_test_timelog()
+
+    """ Create one activity """
+    name = "admin"
+    category = "work"
+    time1 = datetime.datetime(2016, 6, 9, 6, 5, 35)
+    time2 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    activity = tracktime.Activity(time1, name, category, time2)
+    assert activity.starttime == time1
+    assert activity.name == name
+    assert activity.category == category
+    assert activity.endtime == time2
+
+    """ Write the activity to the database """
+    timelog = TEST_TIMELOG
+    activity.writedb(timelog)
+
+    """ Read the activity from the database """
+    day = datetime.datetime(2016, 6, 9)
+    now = datetime.datetime(2016, 6, 9, 12)
+    timelog = TEST_TIMELOG
+    tracktime.list_day(day, now, timelog)
+    out, err = capsys.readouterr()
+    assert out == "\n".join([
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=day.strftime("%A,"),
+        day=day.strftime(tracktime.DAYFORMAT)),
+      " 06:05 - 11:23  (5h 17min) | admin@work",
+      ""])
 
 
 def test__get_rows__succeeds():
-    assert True
+    erase_test_timelog()
+    timelog = TEST_TIMELOG
+
+    """ file does not exist """
+    today = datetime.datetime(2016, 6, 9)
+    activities = tracktime.get_rows(today, timelog)
+    assert activities == []
+
+    """ file exists, no activities for today """
+    populate_test_timelog()
+    today = datetime.datetime(2016, 6, 10)
+    activities = tracktime.get_rows(today, timelog)
+    assert activities == []
+
+    populate_test_timelog()
+    with open(TEST_TIMELOG, 'r') as fd:
+        for line in fd:
+            print(line.rstrip('\n'))
+
+    """ file exists with activities for today """
+    today = datetime.datetime(2016, 6, 9)
+    activities = tracktime.get_rows(today, timelog)
+    assert len(activities) == 3
 
 
-# LIST
-def test_list_week_when_none_exist__succeeds():
-    assert True
+def test__list_day__succeeds(capsys):
+    populate_test_timelog()
+
+    timelog = TEST_TIMELOG
+    day = datetime.datetime(2016, 6, 9)
+    now = datetime.datetime(2016, 6, 9, 18)
+    answer = "\n".join([
+        tracktime.ACTIVITY_DAY_HEADER.format(
+          weekday=day.strftime("%A,"),
+          day=day.strftime(tracktime.DAYFORMAT)),
+        " 06:05 - 11:23  (5h 17min) | admin@work",
+        " 11:23 - 11:47  (0h 24min) | lunch@break",
+        " 11:47 -        (6h 12min) | work@work", ""])
+    tracktime.list_day(day, now, timelog)
+    out, err = capsys.readouterr()
+    assert out == answer
+    assert err == ""
+    day = datetime.datetime(2016, 6, 8)
+    now = datetime.datetime(2016, 6, 8, 8)
+    answer = "\n".join([
+        tracktime.ACTIVITY_DAY_HEADER.format(
+          weekday=day.strftime("%A,"),
+          day=day.strftime(tracktime.DAYFORMAT)),
+        ""])
+    tracktime.list_day(day, now, timelog)
+    out, err = capsys.readouterr()
+    assert out == answer
+    assert err == ""
 
 
-def test_list_day_when_none_exist__succeeds():
-    assert True
+def test__list_week_succeeds(capsys):
+    populate_test_timelog()
+
+    timelog = TEST_TIMELOG
+    now = datetime.datetime(2016, 6, 11, 18)
+    sunday = datetime.datetime(2016, 6, 5)
+    monday = datetime.datetime(2016, 6, 6)
+    tuesday = datetime.datetime(2016, 6, 7)
+    wednesday = datetime.datetime(2016, 6, 8)
+    thursday = datetime.datetime(2016, 6, 9)
+    friday = datetime.datetime(2016, 6, 10)
+    saturday = datetime.datetime(2016, 6, 11)
+    answer = "\n".join([
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=sunday.strftime("%A,"),
+        day=sunday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=monday.strftime("%A,"),
+        day=monday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=tuesday.strftime("%A,"),
+        day=tuesday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=wednesday.strftime("%A,"),
+        day=wednesday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=thursday.strftime("%A,"),
+        day=thursday.strftime(tracktime.DAYFORMAT)),
+      " 06:05 - 11:23  (5h 17min) | admin@work",
+      " 11:23 - 11:47  (0h 24min) | lunch@break",
+      " 11:47 -       (12h 12min) | work@work",
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=friday.strftime("%A,"),
+        day=friday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=saturday.strftime("%A,"),
+        day=saturday.strftime(tracktime.DAYFORMAT)),
+      " 01:00 -       (16h 59min) | travel@general",
+      "",
+      ""])
+    tracktime.list_week(now, timelog)
+    out, err = capsys.readouterr()
+    assert out == answer
+    assert err == ""
+    now = datetime.datetime(2016, 6, 8, 18)
+    answer = "\n".join([
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=sunday.strftime("%A,"),
+        day=sunday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=monday.strftime("%A,"),
+        day=monday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=tuesday.strftime("%A,"),
+        day=tuesday.strftime(tracktime.DAYFORMAT)),
+      "",
+      tracktime.ACTIVITY_DAY_HEADER.format(
+        weekday=wednesday.strftime("%A,"),
+        day=wednesday.strftime(tracktime.DAYFORMAT)),
+      "",
+      ""])
+    tracktime.list_week(now, timelog)
+    out, err = capsys.readouterr()
+    assert out == answer
+    assert err == ""
 
 
-def test_list_week_when_some_activties_exist__succeeds():
-    assert True
+def test__add_test_timelog_entries_with_start_stop__succeeds():
+    erase_test_timelog()
+    timelog = TEST_TIMELOG
 
+    """ stop with no timelog does nothing """
+    now = datetime.datetime(2016, 6, 9, 6)
+    tracktime.stop(now, timelog)
 
-def test_list_day_when_some_activties_exist__succeeds():
-    assert True
+    """ Create 1st activity (timelog does not exist) """
+    now = datetime.datetime(2016, 6, 9, 6, 5, 35)
+    name = "admin"
+    category = "work"
+    tracktime.start(now, name, category, timelog)
 
+    """ Create a subsequent activity """
+    now = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    name = "lunch"
+    category = "break"
+    tracktime.start(now, name, category, timelog)
 
-# START
-def test__start_first_activity_ever__succeeds():
-    assert True
+    """ stop an inprogress activity """
+    now = datetime.datetime(2016, 6, 9, 11, 47, 17)
+    tracktime.stop(now, timelog)
 
+    """ stop when activity inprogress for prior day does nothing """
+    now = datetime.datetime(2016, 6, 10, 12)
+    tracktime.stop(now, timelog)
 
-def test__start_second_activity__succeeds():
-    assert True
+    """ Create an unfinished activity at the end of a day """
+    now = datetime.datetime(2016, 6, 9, 11, 47, 17)
+    name = "work"
+    category = "work"
+    tracktime.start(now, name, category, timelog)
 
+    """ Create an unfinished activity with default category """
+    name = "travel"
+    time1 = datetime.datetime(2016, 6, 11, 1, 0, 41)
+    activity = tracktime.Activity(time1, name)
+    activity.writedb(timelog)
 
-def test__start_activity_with_atsigns_in_name__succeeds():
-    assert True
-
-
-def test__start_activity_with_atsigns_in_name_and_no_category__succeeds():
-    assert True
-
-
-# STOP
-def test__stop_activity_when_none_inprogress__succeeds():
-    assert True
-
-
-def test__stop_activity_when_one_inprogress_yesterday__succeeds():
-    assert True
-
-
-def test__stop_activity_when_one_inprogress_today__succeeds():
-    assert True
+    answer = [
+      "STARTTIME=2016-06-09T06:05:35; NAME=admin; CATEGORY=work; "
+      "ENDTIME=2016-06-09T11:23:02\n",
+      "STARTTIME=2016-06-09T11:23:02; NAME=lunch; CATEGORY=break; "
+      "ENDTIME=2016-06-09T11:47:17\n",
+      "STARTTIME=2016-06-09T11:47:17; NAME=work; CATEGORY=work; "
+      "ENDTIME=none\n",
+      "STARTTIME=2016-06-11T01:00:41; NAME=travel; CATEGORY=general; "
+      "ENDTIME=none\n",
+      "\n"]
+    """ test that file contains answer """
+    with open(TEST_TIMELOG, 'r') as fd:
+        for ii, line in enumerate(fd):
+            assert line == answer[ii]
 
 
 # CLI INPUT
@@ -115,19 +404,14 @@ def test__help_message__succeeds():
     assert True
 
 
-def test__missing_activity_name__succeeds():
-    assert True
-
-
-def test__missing_category__succeeds():
-    assert True
-
-
 def test__extra_stop_option__succeeds():
+    #    """ test stop command with extra garbage raises error """
+    #    argv = ["stop", "in", "the", "name", "of", "Love"]
     assert True
 
 
 def test__bad_list_option__succeeds():
+    """ list year should fail """
     assert True
 
 

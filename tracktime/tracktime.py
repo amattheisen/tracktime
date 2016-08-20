@@ -29,7 +29,8 @@ class Activity():
     """ An Activity is a task (e.g. sweep floor) with a start datetime,
     category, and end datetime. """
     def __init__(
-      self, starttime, name, category=DEFAULT_CATEGORY, endtime=False):
+      self, starttime, name, category=DEFAULT_CATEGORY,
+      endtime=False):
         self.name = name
         self.starttime = starttime
         self.category = category
@@ -39,21 +40,34 @@ class Activity():
             self.endtime = INPROGRESS
 
     def __str__(self):
-        return "STARTTIME=%s; NAME=%s; CATEGORY=%s; ENDTIME=%s" % (
-          self.starttime.strftime(DATETIMEFORMAT), self.name, self.category,
-          self.endtime)
+        try:
+            return "STARTTIME=%s; NAME=%s; CATEGORY=%s; ENDTIME=%s" % (
+              self.starttime.strftime(DATETIMEFORMAT), self.name,
+              self.category, self.endtime.strftime(DATETIMEFORMAT))
+        except:  # endtime is not a datetime
+            return "STARTTIME=%s; NAME=%s; CATEGORY=%s; ENDTIME=%s" % (
+              self.starttime.strftime(DATETIMEFORMAT), self.name,
+              self.category, self.endtime)
 
-    def writedb(self):
+    def writedb(self, timelog=TIMELOG):
         """ write activity to database """
-        fdout = open(TIMELOG, "a")
+        fdout = open(timelog, "a")
         print(self.__str__(), file=fdout)
         fdout.close()
 
     def get_duration(self, now):
         """ compute the duration of activity """
         if self.endtime == INPROGRESS:
-            # Task is ongoing
-            duration = now - self.starttime
+            # if task is for prior day
+            taskday = (
+              self.starttime.year, self.starttime.month, self.starttime.day)
+            today = (now.year, now.month, now.day)
+            if taskday != today:
+                duration = datetime.datetime(
+                  self.starttime.year, self.starttime.month,
+                  self.starttime.day, 23, 59, 59) - self.starttime
+            else:  # Task is ongoing
+                duration = now - self.starttime
         else:
             duration = self.endtime - self.starttime
         return duration
@@ -77,18 +91,19 @@ class Activity():
 
 
 # COMMANDS
-def start(now, activity, category):
-    """ Start a new activity. """
+def start(now, activity, category, timelog=TIMELOG):
+    """ Stop today's inprogress activity and start a new activity. """
+    stop(now, timelog)
     activity = Activity(now, activity, category=category)
-    activity.writedb()
+    activity.writedb(timelog)
     pass
 
 
-def stop(now):
+def stop(now, timelog=TIMELOG):
     """ Determine if there is an activity in progress and stop it. """
     # Generate a list of all activities that were started today
     today = datetime.datetime(now.year, now.month, now.day)
-    activities = get_rows(now, today)
+    activities = get_rows(today, timelog)
     for activity in activities:
         if activity.starttime < today:
             continue
@@ -96,12 +111,12 @@ def stop(now):
             continue
         # Activity is in progress
         activity_text = activity.__str__()
-        for line in fileinput.input(TIMELOG, inplace=1):
+        for line in fileinput.input(timelog, inplace=1):
             if line.strip() != activity_text:
                 print(line.strip())
                 continue
             # stop activity
-            log_activity = parse_line(line)
+            log_activity = parse_line(line, timelog)
             log_activity.endtime = now.strftime(DATETIMEFORMAT)
             print(log_activity.__str__())
             break  # assumes only 1 activity in progress
@@ -110,9 +125,9 @@ def stop(now):
     return
 
 
-def list_day(day, now):
+def list_day(day, now, timelog=TIMELOG):
     """ print daily activity list """
-    activities = get_rows(now, day)
+    activities = get_rows(day, timelog)
     print(ACTIVITY_DAY_HEADER.format(
       weekday=day.strftime("%A,"), day=day.strftime(DAYFORMAT)))
     for activity in activities:
@@ -121,21 +136,21 @@ def list_day(day, now):
     return
 
 
-def list_week(now):
+def list_week(now, timelog=TIMELOG):
     """ print weekly activity list """
     last_sunday = datetime.datetime(
       now.year, now.month, now.day - (now.weekday() + 1))
     for ii in range(0, 7):
-        this_day = last_sunday+datetime.timedelta(days=ii)
+        this_day = last_sunday + datetime.timedelta(days=ii)
         if this_day > now:
             break
-        list_day(this_day, now)
+        list_day(this_day, now, timelog)
         print("")
     return
 
 
 # Utilities
-def parse_line(line):
+def parse_line(line, timelog=TIMELOG):
     """ parse one line of the timelog. """
     if line.strip() == "" or line.strip()[0] == "#":
         return False
@@ -152,24 +167,23 @@ def parse_line(line):
     return activity
 
 
-def get_rows(now, this_day):
+def get_rows(this_day, timelog=TIMELOG):
     """ get rows from database """
-    try:
-        fdin = open(TIMELOG, "r")
-    except:
-        # file does not exist, nothing to list
-        return []
     activities = []
-    for line in fdin:
-        activity = parse_line(line)
-        if not activity:
-            continue
-        # Only lines for this_day
-        if activity.starttime < this_day:
-            continue
-        if activity.starttime > this_day + datetime.timedelta(days=1):
-            continue
-        activities.append(activity)
+    try:
+        with open(timelog, "r") as fdin:
+            for line in fdin:
+                activity = parse_line(line, timelog)
+                if not activity:
+                    continue
+                # Only lines for this_day
+                if activity.starttime < this_day:
+                    continue
+                if activity.starttime > this_day + datetime.timedelta(days=1):
+                    continue
+                activities.append(activity)
+    except:  # file does not exist, nothing to list
+        pass
     return activities
 
 
@@ -181,7 +195,7 @@ def make_parser():
 
     p = argparse.ArgumentParser(
       description='Track time spent on activities.',
-      epilog="""examples: timetrack start work@desk
+      epilog="""examples: timetrack start Learn Latin@Tiny Office
                           ^^^^ ^^^^
                             |    \-----Category
                             \----------Activity
@@ -210,6 +224,10 @@ def parse_activity_at_category(p, args):
             activity = args.detail[0]
         if activity.rfind("@") > 1:
             (activity, category) = activity.rsplit("@", 1)
+            activity = activity.strip()
+            category = category.strip()
+            if category == "":
+                category = DEFAULT_CATEGORY
         else:
             category = DEFAULT_CATEGORY
     except (IndexError, NameError):
@@ -217,20 +235,20 @@ def parse_activity_at_category(p, args):
     return activity, category
 
 
-def read_args(argv=None):
+def main(argv=None):
     """ Check syntax of argv and perform requested action """
+    timelog = TIMELOG
     now = datetime.datetime.now()
     p = make_parser()
     args = p.parse_args()
     if args.command == "start":
         (activity, category) = parse_activity_at_category(p, args)
-        stop(now)
         print("STARTING", "TASK: ", activity, "TAG: ", category)
         start(now, activity, category)
     elif args.command == "stop":
         if len(args.detail) == 0:
             print("STOPPING CURRENT TASK")
-            stop(now)
+            stop(now, timelog)
         else:
             p.error("ERROR: bad option for %s command" % args.command)
     elif args.command == "list":
@@ -247,4 +265,4 @@ def read_args(argv=None):
 
 
 if __name__ == "__main__":
-    read_args(argv)
+    main(argv)
