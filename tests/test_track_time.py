@@ -24,14 +24,14 @@ def add_test_timelog_entries_directly():
     name = "admin"
     category = "work"
     time1 = datetime.datetime(2016, 6, 9, 6, 5, 35)
-    time2 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    time2 = datetime.datetime(2016, 6, 9, 11, 23, 2)
     activity = tracktime.Activity(time1, name, category, time2)
     activity.writedb(timelog)
 
     """ Create a finished activity """
     name = "lunch"
     category = "break"
-    time1 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    time1 = datetime.datetime(2016, 6, 9, 11, 23, 2)
     time2 = datetime.datetime(2016, 6, 9, 11, 47, 17)
     activity = tracktime.Activity(time1, name, category, time2)
     activity.writedb(timelog)
@@ -159,7 +159,7 @@ def test__create_Activity__succeeds(capsys):
     name = "admin"
     category = "work"
     time1 = datetime.datetime(2016, 6, 9, 6, 5, 35)
-    time2 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    time2 = datetime.datetime(2016, 6, 9, 11, 23, 2)
     now = datetime.datetime(2016, 6, 9, 18)
     duration = time2 - time1
     day_format = " 06:05 - 11:23  (5h 17min) | admin@work"
@@ -187,7 +187,7 @@ def test_write_and_read_Activity__succeeds(capsys):
     name = "admin"
     category = "work"
     time1 = datetime.datetime(2016, 6, 9, 6, 5, 35)
-    time2 = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    time2 = datetime.datetime(2016, 6, 9, 11, 23, 2)
     activity = tracktime.Activity(time1, name, category, time2)
     assert activity.starttime == time1
     assert activity.name == name
@@ -358,7 +358,7 @@ def test__add_test_timelog_entries_with_start_stop__succeeds():
     tracktime.start(now, name, category, timelog)
 
     """ Create a subsequent activity """
-    now = datetime.datetime(2016, 6, 9, 11, 23, 02)
+    now = datetime.datetime(2016, 6, 9, 11, 23, 2)
     name = "lunch"
     category = "break"
     tracktime.start(now, name, category, timelog)
