@@ -125,7 +125,7 @@ def stop(now, timelog=TIMELOG):
     return
 
 
-def list_day(day, now, timelog=TIMELOG):
+def list_day(day, now, timelog=TIMELOG, print_totals=True):
     """ print daily activity list """
     activities = get_rows(day, timelog)
     print(ACTIVITY_DAY_HEADER.format(
@@ -133,6 +133,9 @@ def list_day(day, now, timelog=TIMELOG):
     for activity in activities:
         activity_text = activity.day_format(now)
         print(activity_text)
+    print("")
+    if print_totals:
+        print_category_hours([day], now, timelog)
     return
 
 
@@ -140,13 +143,51 @@ def list_week(now, timelog=TIMELOG):
     """ print weekly activity list """
     last_sunday = datetime.datetime(
       now.year, now.month, now.day - (now.weekday() + 1))
+    days = []
     for ii in range(0, 7):
         this_day = last_sunday + datetime.timedelta(days=ii)
         if this_day > now:
             break
-        list_day(this_day, now, timelog)
-        print("")
+        list_day(this_day, now, timelog, print_totals=False)
+        days.append(this_day)
+    print_category_hours(days, now, timelog)
     return
+
+
+def sum_category_hours(day, now, timelog=TIMELOG, category_hours=False):
+    """ Sum the hours by category. """
+    if not category_hours:
+        category_hours = {}
+    activities = get_rows(day, timelog)
+    for activity in activities:
+        category = activity.category
+        duration = activity.get_duration(now)
+        if category in category_hours:
+            category_hours[category] += duration
+        else:
+            category_hours[category] = duration
+    return category_hours
+
+
+def print_category_hours(days, now, timelog=TIMELOG):
+    """ Print Total hours spend in each category. """
+    # Compute totals
+    category_hours = {}
+    for day in days:
+        category_hours = sum_category_hours(day, now, timelog, category_hours)
+    # Print header
+    print("%44s" % "Category Totals")
+    # Print category totals
+    sorted_categories = list(category_hours.keys())
+    sorted_categories.sort()
+    for category in sorted_categories:
+        duration = category_hours[category]
+        duration_str = "(%dh %dmin)" % (
+          duration.seconds//3600, (duration.seconds//60) % 60)
+        category_summary_text = "%44s@%s" % (duration_str, category)
+        print(category_summary_text)
+    if len(sorted_categories) == 0:
+        print("%44s" % "<no data>")
 
 
 # Utilities
@@ -196,13 +237,13 @@ def make_parser():
     p = argparse.ArgumentParser(
       description='Track time spent on activities.',
       epilog="""examples: timetrack start Learn Latin@Tiny Office
-                          ^^^^ ^^^^
-                            |    \-----Category
-                            \----------Activity
+                          ^^^^^^^^^^^ ^^^^^^^^^^^
+                                   |    \-----Category
+                                   \----------Activity
             Begins a new activity, stopping in progress activity
-    timetracker stop
+    tracktime stop
             Stops in progress activity
-    timetracker list [week]
+    tracktime list [week]
             Lists the Activities for the day (default), or weekly summary""",
       formatter_class=CustomFormatter,
       )

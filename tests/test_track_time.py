@@ -8,6 +8,15 @@ import datetime
 TEST_TIMELOG = ospathjoin("tests", "test_timelog.txt")
 
 
+@pytest.fixture
+def activity():
+    name = "admin"
+    category = "work"
+    time1 = datetime.datetime(2016, 6, 9, 6, 5, 35)
+    time2 = datetime.datetime(2016, 6, 9, 11, 23, 2)
+    return tracktime.Activity(time1, name, category, time2)
+
+
 def erase_test_timelog():
     """ remove the TEST_TIMELOG (if it exists) """
     try:
@@ -209,6 +218,9 @@ def test_write_and_read_Activity__succeeds(capsys):
         weekday=day.strftime("%A,"),
         day=day.strftime(tracktime.DAYFORMAT)),
       " 06:05 - 11:23  (5h 17min) | admin@work",
+      "",
+      "                             Category Totals",
+      "                                  (5h 17min)@work",
       ""])
 
 
@@ -250,7 +262,12 @@ def test__list_day__succeeds(capsys):
           day=day.strftime(tracktime.DAYFORMAT)),
         " 06:05 - 11:23  (5h 17min) | admin@work",
         " 11:23 - 11:47  (0h 24min) | lunch@break",
-        " 11:47 -        (6h 12min) | work@work", ""])
+        " 11:47 -        (6h 12min) | work@work",
+        "",
+        "                             Category Totals",
+        "                                  (0h 24min)@break",
+        "                                 (11h 30min)@work",
+        ""])
     tracktime.list_day(day, now, timelog)
     out, err = capsys.readouterr()
     assert out == answer
@@ -261,6 +278,9 @@ def test__list_day__succeeds(capsys):
         tracktime.ACTIVITY_DAY_HEADER.format(
           weekday=day.strftime("%A,"),
           day=day.strftime(tracktime.DAYFORMAT)),
+        "",
+        "                             Category Totals",
+        "                                   <no data>",
         ""])
     tracktime.list_day(day, now, timelog)
     out, err = capsys.readouterr()
@@ -313,6 +333,10 @@ def test__list_week_succeeds(capsys):
         day=saturday.strftime(tracktime.DAYFORMAT)),
       " 01:00 -       (16h 59min) | travel@general",
       "",
+      "                             Category Totals",
+      "                                  (0h 24min)@break",
+      "                                 (16h 59min)@general",
+      "                                 (17h 30min)@work",
       ""])
     tracktime.list_week(now, timelog)
     out, err = capsys.readouterr()
@@ -336,6 +360,8 @@ def test__list_week_succeeds(capsys):
         weekday=wednesday.strftime("%A,"),
         day=wednesday.strftime(tracktime.DAYFORMAT)),
       "",
+      "                             Category Totals",
+      "                                   <no data>",
       ""])
     tracktime.list_week(now, timelog)
     out, err = capsys.readouterr()
