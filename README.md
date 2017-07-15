@@ -2,30 +2,30 @@
 Easily track time spent on various activities.
 
 ## Usage
-usage: tracktime.py [-h] CMD [DETAIL [DETAIL ...]]
-
-Track time spent on activities.
-
-positional arguments:
-  CMD         Enter a command: start, stop, or list
-  DETAIL      REQUIRED for start command: specify activity@category. OPTIONAL
-              for list command: specify 'week' for a weekly summary. (default:
-              None)
-
-optional arguments:
-  -h, --help  show this help message and exit
-
-examples:
-    timetrack start Learn Latin@Tiny Office
-                    ^^^^^^^^^^^ ^^^^^^^^^^^
-                        |         |
-                        |         \-----Category
-                        \-----Activity
-            Begins a new activity, stopping in progress activity
-    tracktime stop
-            Stops in progress activity
-    tracktime list [week]
-            Lists the Activities for the day (default), or weekly summary
+    usage: tracktime.py [-h] CMD [DETAIL [DETAIL ...]]
+    
+    Track time spent on activities.
+    
+    positional arguments:
+      CMD         Enter a command: start, stop, or list
+      DETAIL      REQUIRED for start command: specify activity@category. OPTIONAL
+                  for list command: specify 'week' for a weekly summary. (default:
+                  None)
+    
+    optional arguments:
+      -h, --help  show this help message and exit
+    
+    examples:
+        timetrack start Learn Latin@Tiny Office
+                        ^^^^^^^^^^^ ^^^^^^^^^^^
+                            |         |
+                            |         \-----Category
+                            \-----Activity
+                Begins a new activity, stopping in progress activity
+        tracktime stop
+                Stops in progress activity
+        tracktime list [week]
+                Lists the Activities for the day (default), or weekly summary
 
 ## Continious Integration Status:
 
