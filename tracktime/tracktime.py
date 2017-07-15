@@ -236,10 +236,12 @@ def make_parser():
 
     p = argparse.ArgumentParser(
       description='Track time spent on activities.',
-      epilog="""examples: timetrack start Learn Latin@Tiny Office
-                          ^^^^^^^^^^^ ^^^^^^^^^^^
-                                   |    \-----Category
-                                   \----------Activity
+      epilog="""examples:
+    timetrack start Learn Latin@Tiny Office
+                    ^^^^^^^^^^^ ^^^^^^^^^^^
+                        |         |
+                        |         \-----Category
+                        \-----Activity
             Begins a new activity, stopping in progress activity
     tracktime stop
             Stops in progress activity
