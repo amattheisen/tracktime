@@ -142,7 +142,7 @@ def list_day(day, now, timelog=TIMELOG, print_totals=True):
 def list_week(now, timelog=TIMELOG):
     """ print weekly activity list """
     last_sunday = datetime.datetime(
-      now.year, now.month, now.day - (now.weekday() + 1))
+      now.year, now.month, now.day) - datetime.timedelta(now.weekday() + 1)
     days = []
     for ii in range(0, 7):
         this_day = last_sunday + datetime.timedelta(days=ii)
@@ -183,7 +183,8 @@ def print_category_hours(days, now, timelog=TIMELOG):
     for category in sorted_categories:
         duration = category_hours[category]
         duration_str = "(%dh %dmin)" % (
-          duration.seconds//3600, (duration.seconds//60) % 60)
+          (duration.days*24 + duration.seconds//3600),
+          (duration.seconds//60) % 60)
         category_summary_text = "%44s@%s" % (duration_str, category)
         print(category_summary_text)
     if len(sorted_categories) == 0:
