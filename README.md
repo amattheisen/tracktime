@@ -1,6 +1,12 @@
 # tracktime
 Easily track time spent on various activities.
 
+## Installation
+Once [pyinstaller](http://pyinstaller.readthedocs.io/en/stable/) is installed, a tracktime executable can be created and installed with the install script.
+
+    pip install pyinstaller
+    ./install.sh
+
 ## Usage
     usage: tracktime.py [-h] CMD [DETAIL [DETAIL ...]]
     
@@ -27,7 +33,7 @@ Easily track time spent on various activities.
         tracktime list [week]
                 Lists the Activities for the day (default), or weekly summary
 
-## Continious Integration Status:
+## Continuous Integration Status:
 
 [![Build Status](https://travis-ci.org/amattheisen/tracktime.svg?branch=master)](https://travis-ci.org/amattheisen/tracktime)
 
@@ -36,3 +42,7 @@ Easily track time spent on various activities.
 ## Requirements
 
 1. Python 2.7 or 3.x
+
+## Miscellaneous
+ * The time log is kept at `~/timelog.txt`
+ * This file can be rendered via `grip` (installed with `pip install grip`).

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-"""Time Track
-Description: Track time spent at various activities
+"""timetrack.py
+
+Description: Track time spent at various activities.
 
 Author: Andrew Mattheisen
 
